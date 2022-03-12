@@ -60,15 +60,8 @@ function App() {
       if (languageList.length > 0) {
         const $ul = document.createElement("ul");
         for (let language of languageList) {
-          const find = $searchLanguage.value;
-          const regexp = new RegExp(find, "gi");
-          const matchedWord = language.match(regexp);
-          language = language.replace(
-            regexp,
-            `<span class="Suggestion__item--matched">${matchedWord}</span>`
-          );
           const $li = document.createElement("li");
-          $li.innerHTML = language;
+          $li.innerHTML = emphasizeMatchedWord($searchLanguage.value, language);
           $ul.append($li);
         }
         $suggestionContainer.append($ul);
@@ -84,12 +77,21 @@ function App() {
     }
   };
 
-
   const renderSelectedLanguageList = () => {
     const template = this.selectedLanguageList
       .map((language) => languageTemplate(language))
       .join("");
     $selectedLanguageList.innerHTML = template;
+  };
+  
+  const emphasizeMatchedWord = (standard, word) => {
+    const regexp = new RegExp(standard, "gi");
+    const matchedWord = word.match(regexp);
+    const emphasizedWord = word.replace(
+      regexp,
+      `<span class="Suggestion__item--matched">${matchedWord}</span>`
+    );
+    return emphasizedWord;
   };
 
   const keepCountOfLanguages = () => {
