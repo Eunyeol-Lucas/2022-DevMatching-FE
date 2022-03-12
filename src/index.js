@@ -42,9 +42,10 @@ import { $ } from "./utils.js";
 import { BASE_URL } from "./const.js";
 
 function App() {
+  this.selectedLanguageList = [];
   this.init = () => {
-    this.selectedLanguageList = [];
     $(".Suggestion").style.display = "none";
+    initEventListener();
   };
   const $searchLanguage = $(".SearchInput__input");
   const $searchForm = $(".SearchInput");
@@ -59,8 +60,15 @@ function App() {
       if (languageList.length > 0) {
         const $ul = document.createElement("ul");
         for (let language of languageList) {
+          const find = $searchLanguage.value;
+          const regexp = new RegExp(find, "gi");
+          const matchedWord = language.match(regexp);
+          language = language.replace(
+            regexp,
+            `<span class="Suggestion__item--matched">${matchedWord}</span>`
+          );
           const $li = document.createElement("li");
-          $li.textContent = `${language}`;
+          $li.innerHTML = language;
           $ul.append($li);
         }
         $suggestionContainer.append($ul);
@@ -76,14 +84,14 @@ function App() {
     }
   };
 
-  const render = () => {
-    keepCountOfLanguages();
+
+  const renderSelectedLanguageList = () => {
     const template = this.selectedLanguageList
       .map((language) => languageTemplate(language))
       .join("");
     $selectedLanguageList.innerHTML = template;
   };
-  
+
   const keepCountOfLanguages = () => {
     if (this.selectedLanguageList.length > 5) {
       this.selectedLanguageList.shift();
@@ -103,7 +111,7 @@ function App() {
     return languageList;
   };
 
-  const controlSuggestionList = (key) => {
+  const changeHighlightedLanguage = (key) => {
     const $suggestionList = $suggestionContainer.querySelectorAll("li");
     let target;
     const initIndex = key === "ArrowUp" ? $suggestionList.length - 1 : 0;
@@ -129,15 +137,21 @@ function App() {
     $suggestionContainer.innerHTML = "";
   };
 
-  const debounce = (callback, delay) => {
-    let timer;
-    return (...args) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => callback(...args), delay);
-    };
+  const selectLanguage = (language) => {
+    alert(language);
+    removeReduplicated(language);
+    this.selectedLanguageList.push(language);
+    keepCountOfLanguages();
+    renderSelectedLanguageList();
   };
 
-  $searchLanguage.addEventListener("keyup", async (e) => {
+  const removeReduplicated = (language) => {
+    this.selectedLanguageList = this.selectedLanguageList.filter(
+      (selectedLanguage) => language !== selectedLanguage
+    );
+  };
+
+  const controlSuggestionContainer = async (e) => {
     if (e.key == "Enter") e.preventDefault();
     await renderSuggestionContainer();
     if (e.key === "Escape") {
@@ -147,20 +161,32 @@ function App() {
       (e.key === "ArrowUp" || e.key === "ArrowDown") &&
       $suggestionContainer.style.display === "block"
     ) {
-      controlSuggestionList(e.key);
+      changeHighlightedLanguage(e.key);
     }
-  });
+  };
 
-  $suggestionContainer.addEventListener("click", (e) => {
-    alert(e.target.textContent);
-    console.log(this.selectedLanguageList);
-    this.selectedLanguageList.push(e.target.textContent);
-    render();
-  });
+  const debounce = (callback, delay) => {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => callback(...args), delay);
+    };
+  };
 
-  $searchForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-  });
+  const initEventListener = () => {
+    $searchLanguage.addEventListener(
+      "keyup",
+      async (e) => await controlSuggestionContainer(e)
+    );
+
+    $suggestionContainer.addEventListener("click", (e) =>
+      selectLanguage(e.target.textContent)
+    );
+
+    $searchForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+    });
+  };
 }
 
 const app = new App();
