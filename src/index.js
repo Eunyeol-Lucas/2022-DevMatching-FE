@@ -43,6 +43,7 @@ import { BASE_URL } from "./const.js";
 
 function App() {
   this.selectedLanguageList = [];
+  this.languageList = [];
   this.init = () => {
     $(".Suggestion").style.display = "none";
     initEventListener();
@@ -53,13 +54,12 @@ function App() {
   const $selectedLanguageContainer = $(".SelectedLanguage");
   const $selectedLanguageList = $selectedLanguageContainer.querySelector("ul");
 
-  const renderSuggestionContainer = async () => {
+  const renderSuggestionContainer = () => {
     if ($searchLanguage.value.length > 2) {
-      const languageList = await getLanguageList($searchLanguage.value);
       $suggestionContainer.innerHTML = "";
-      if (languageList.length > 0) {
+      if (this.languageList?.length > 0) {
         const $ul = document.createElement("ul");
-        for (let language of languageList) {
+        for (let language of this.languageList) {
           const $li = document.createElement("li");
           $li.innerHTML = emphasizeMatchedWord($searchLanguage.value, language);
           $ul.append($li);
@@ -83,7 +83,7 @@ function App() {
       .join("");
     $selectedLanguageList.innerHTML = template;
   };
-  
+
   const emphasizeMatchedWord = (standard, word) => {
     const regexp = new RegExp(standard, "gi");
     const matchedWord = word.match(regexp);
@@ -102,15 +102,6 @@ function App() {
 
   const languageTemplate = (language) => {
     return `<li>${language}</li>`;
-  };
-
-  const getLanguageList = async (language) => {
-    const response = await fetch(`${BASE_URL}/languages?keyword=${language}`);
-    if (!response.ok) {
-      throw new Error("에러 발생");
-    }
-    const languageList = await response.json();
-    return languageList;
   };
 
   const changeHighlightedLanguage = (key) => {
@@ -132,6 +123,10 @@ function App() {
 
     $selectedLanguage?.classList.remove("Suggestion__item--selected");
     target.classList.add("Suggestion__item--selected");
+    console.log($selectedLanguage);
+    if (key == "Enter") {
+      alert(target.textContent);
+    }
   };
 
   const closeSuggestion = () => {
@@ -154,7 +149,9 @@ function App() {
   };
 
   const controlSuggestionContainer = async (e) => {
-    if (e.key == "Enter") e.preventDefault();
+    const $selectedLanguage = $suggestionContainer.querySelector(
+      "li.Suggestion__item--selected"
+    );
     await renderSuggestionContainer();
     if (e.key === "Escape") {
       closeSuggestion();
@@ -165,6 +162,20 @@ function App() {
     ) {
       changeHighlightedLanguage(e.key);
     }
+    if (e.key == "Enter" && $suggestionContainer.style.display === "block") {
+      const $selectedLanguage = $suggestionContainer.querySelector("li");
+      selectLanguage($selectedLanguage.textContent);
+    }
+  };
+  const requestLanguageList = async (language) => {
+    const response = await fetch(`${BASE_URL}/languages?keyword=${language}`);
+    if (!response.ok) {
+      throw new Error("에러 발생");
+    }
+    const languageList = await response.json();
+    this.languageList = languageList;
+    console.log(languageList);
+    renderSuggestionContainer();
   };
 
   const debounce = (callback, delay) => {
@@ -175,11 +186,21 @@ function App() {
     };
   };
 
+  const debounceRequest = debounce((value) => requestLanguageList(value), 200);
+
   const initEventListener = () => {
-    $searchLanguage.addEventListener(
-      "keyup",
-      async (e) => await controlSuggestionContainer(e)
-    );
+    $searchLanguage.addEventListener("keyup", async (e) => {
+      if (
+        e.key === "ArrowUp" ||
+        e.key === "ArrowDown" ||
+        e.key === "Enter" ||
+        e.key === "Escape"
+      )
+        await controlSuggestionContainer(e);
+      else {
+        if (e.target.value.length > 2) debounceRequest(e.target.value);
+      }
+    });
 
     $suggestionContainer.addEventListener("click", (e) =>
       selectLanguage(e.target.textContent)
